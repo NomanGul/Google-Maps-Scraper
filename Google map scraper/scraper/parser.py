@@ -62,7 +62,7 @@ class Parser(Base):
 
             name = soup.select_one(selector=".tAiQdd h1.DUwDvf").text.strip()
 
-            allInfoBars = soup.find_all("button", class_="CsEnBe")
+            allInfoBars = soup.find_all(["a", "button"], class_="CsEnBe")
 
             for infoBar in allInfoBars:
                 data_tooltip = infoBar.get("data-tooltip")
@@ -76,7 +76,7 @@ class Parser(Base):
 
                 elif data_tooltip == self.comparing_tool_tips["website"]:
                     try:
-                        websiteUrl = infoBar.parent.get("href")
+                        websiteUrl = infoBar.get("href")
                     except:
                         websiteUrl = None
 
