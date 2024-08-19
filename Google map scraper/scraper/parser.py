@@ -11,6 +11,7 @@ class Parser(Base):
     def __init__(self, driver) -> None:
         self.driver = driver
         self.finalData = []
+        self.existing_phones = set()
         self.comparing_tool_tips = {
         "location": """Copy address""",
         "phone": """Copy phone number""",
@@ -95,7 +96,13 @@ class Parser(Base):
                 "Rating": rating,
             }
 
-            self.finalData.append(data)
+            # check if phone does not exist then we will add it to our list to prevent duplication
+            if phone in self.existing_phones:
+                Communicator.show_error_message("Phone number already exist. Skipping this phone number")
+            else:
+                self.finalData.append(data)
+                self.existing_phones.add(phone)
+
 
         except Exception as e:  # some resuts have no information , so we dont want them in our pretty cleaned list
             Communicator.show_error_message(f"Error occured while parsing a location. Error is: {str(e)}.", ERROR_CODES['ERR_WHILE_PARSING_DETAILS'] )
@@ -104,11 +111,12 @@ class Parser(Base):
     def main(self, allResultsLinks):
         Communicator.show_message("Scrolling is done. Now going to scrape each location")
         try:
-            for resultLink in allResultsLinks:
+            for index, resultLink in enumerate(allResultsLinks):
                 if Common.close_thread_is_set():
                     self.driver.quit()
                     return
 
+                Communicator.show_message(f"{index} Scraping: {resultLink}")
                 self.openingurl(url=resultLink)
                 self.parse()
 
