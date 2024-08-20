@@ -7,123 +7,94 @@ from .common import Common
 
 
 class Parser(Base):
-
-    def __init__(self, driver) -> None:
-        self.driver = driver
+    def __init__(self, page) -> None:
+        self.page = page
         self.finalData = []
         self.existing_phones = set()
         self.comparing_tool_tips = {
-        "location": """Copy address""",
-        "phone": """Copy phone number""",
-        "website": """Open website""",
+            "location": """Copy address""",
+            "phone": """Copy phone number""",
+            "website": """Open website""",
         }
 
     def init_data_saver(self):
         self.data_saver = DataSaver()
-    
-    def parse(self):
-        """Our function to parse the html"""
 
-        """This block will get element details sheet of a business. 
-        Details sheet means that business details card when you click on a business in 
-        serach results in google maps"""
+    def parse(self, resultLink):
+        """Our function to parse the HTML"""
 
-
-        infoSheet = self.driver.execute_script(
-            """return document.querySelector("[role='main']")""")
+        info_sheet = self.page.query_selector("[role='main']")
         try:
-            """If that information sheet is founded in try block, this block will run and find the contact details"""
-            rating, totalReviews, address, websiteUrl, phone = (
-                None,
-                None,
-                None,
-                None,
-                None,
-            )  # by default they will be none
+            rating, total_reviews, address, website_url, phone = None, None, None, None, None
 
-            html = infoSheet.get_attribute("outerHTML")
-            soup = BeautifulSoup(
-                html, "html.parser"
-            )  # soup of information  sheet of that place
+            html = info_sheet.inner_html()
+            soup = BeautifulSoup(html, "html.parser")
 
             try:
                 rating = soup.find("span", class_="ceNzKf").get("aria-label")
-
-            except:  # if a business does not has rating
+            except:
                 rating = None
 
             try:
-                totalReviews = list(soup.find("div", class_="F7nice").children)
-                totalReviews = totalReviews[1].get_text(
-                    strip=True
-                )
-
+                total_reviews = list(soup.find("div", class_="F7nice").children)
+                total_reviews = total_reviews[1].get_text(strip=True)
             except:
-                totalReviews = None
+                total_reviews = None
 
             name = soup.select_one(selector=".tAiQdd h1.DUwDvf").text.strip()
 
-            allInfoBars = soup.find_all(["a", "button"], class_="CsEnBe")
+            all_info_bars = soup.find_all(["a", "button"], class_="CsEnBe")
 
-            for infoBar in allInfoBars:
-                data_tooltip = infoBar.get("data-tooltip")
-                text = infoBar.find('div', class_='rogA2c').text
-
-                """Below three conditons are used to comapre fetched links to compare them with
-                those links that we have write in start"""
+            for info_bar in all_info_bars:
+                data_tooltip = info_bar.get("data-tooltip")
+                text = info_bar.find('div', class_='rogA2c').text
 
                 if data_tooltip == self.comparing_tool_tips["location"]:
                     address = text.strip()
-
                 elif data_tooltip == self.comparing_tool_tips["website"]:
-                    try:
-                        websiteUrl = infoBar.get("href")
-                    except:
-                        websiteUrl = None
-
+                    website_url = info_bar.get("href")
                 elif data_tooltip == self.comparing_tool_tips["phone"]:
                     phone = text.strip()
-
                 else:
                     pass
 
+            call_hyperlink = f'=HYPERLINK("https://call.ctrlq.org/{phone}", B{len(self.finalData) + 2})' if phone else ''
+
             data = {
+                "Link": resultLink,  # Add the result link as the first column
                 "Name": name,
                 "Phone": phone,
+                "Call": call_hyperlink,  # Add the Call column after Phone
                 "Address": address,
-                "Website": websiteUrl,
-                "Total Reviews": totalReviews,
+                "Website": website_url,
+                "Total Reviews": total_reviews,
                 "Rating": rating,
             }
 
-            # check if phone does not exist then we will add it to our list to prevent duplication
             if phone in self.existing_phones:
-                Communicator.show_error_message("Phone number already exist. Skipping this phone number")
+                Communicator.show_error_message("Phone number already exists. Skipping this phone number")
             else:
                 self.finalData.append(data)
                 self.existing_phones.add(phone)
 
-
-        except Exception as e:  # some resuts have no information , so we dont want them in our pretty cleaned list
-            Communicator.show_error_message(f"Error occured while parsing a location. Error is: {str(e)}.", ERROR_CODES['ERR_WHILE_PARSING_DETAILS'] )
-            
+        except Exception as e:
+            Communicator.show_error_message(f"Error occurred while parsing a location. Error is: {str(e)}.", ERROR_CODES['ERR_WHILE_PARSING_DETAILS'])
 
     def main(self, allResultsLinks):
         Communicator.show_message("Scrolling is done. Now going to scrape each location")
         try:
             for index, resultLink in enumerate(allResultsLinks):
                 if Common.close_thread_is_set():
-                    self.driver.quit()
+                    self.page.close()
                     return
 
                 Communicator.show_message(f"{index} Scraping: {resultLink}")
                 self.openingurl(url=resultLink)
-                self.parse()
+                self.parse(resultLink)  # Pass the resultLink to the parse method
 
         except Exception as e:
-            Communicator.show_message(f"Error occured while parsing the locations. Error: {str(e)}")
-            
+            Communicator.show_message(f"Error occurred while parsing the locations. Error: {str(e)}")
+
         finally:
             self.init_data_saver()
             self.data_saver.save(datalist=self.finalData)
-                

@@ -16,9 +16,9 @@ class Frontend:
         """Initializing frontend layout"""
 
         self.root = tk.Tk()
-        icon = tk.PhotoImage(file="Google map scraper\images\GMS.png")
+        # icon = tk.PhotoImage(file="Google map scraper\images\GMS.png")
 
-        self.root.iconphoto(True, icon)
+        # self.root.iconphoto(True, icon)
         self.root.geometry("850x650")
         self.root.resizable(False, False)
         self.root.title("Google maps scraper")
@@ -30,11 +30,11 @@ class Frontend:
             background=[("active", "white")],
         )
 
-        bgimage = tk.PhotoImage(file="Google map scraper\images\Home.png")
+        # bgimage = tk.PhotoImage(file="Google map scraper\images\Home.png")
 
-        self.imglabel = tk.Label(self.root, image=bgimage)
-        self.imglabel.place(x=0, y=0, relwidth=1, relheight=1)
-        self.imglabel.image = bgimage
+        # self.imglabel = tk.Label(self.root, image=bgimage)
+        # self.imglabel.place(x=0, y=0, relwidth=1, relheight=1)
+        # self.imglabel.image = bgimage
 
         """For search entry"""
         self.search_label = ttk.Label(
@@ -128,7 +128,6 @@ class Frontend:
         else:
             self.submit_button.config(state="disabled")
 
-            self.searchQuery = self.searchQuery.lower()
             self.outputFormatValue = self.outputFormatValue.lower()
             self.headlessMode = self.healdessCheckBoxVar.get()
 
