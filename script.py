@@ -1,571 +1,78 @@
 import csv
 import time
+import os
 from playwright.sync_api import sync_playwright, Page
 
-# List of locations to scrape
-locations = [
-    # "Abbey Wood",
-    # "Acton",
-    # "Acton Green",
-    # "Addington",
-    "Addiscombe",
-    "Albany Park",
-    "Aldborough Hatch",
-    "Aldgate",
-    "Aldwych",
-    "Alperton",
-    "Anerley",
-    "Angel",
-    "Aperfield",
-    "Archway",
-    "Ardleigh Green",
-    "Arkley",
-    "Arnos Grove",
-    "Balham",
-    "Bankside",
-    "Barbican",
-    "Barking",
-    "Barking Riverside",
-    "Barkingside",
-    "Barnehurst",
-    "Barnes",
-    "Barnes Cray",
-    "Barnet",
-    "Barnet Gate",
-    "Barnhill",
-    "Barnsbury",
-    "Battersea",
-    "Bayswater",
-    "Beam Park",
-    "Beckenham",
-    "Beckton",
-    "Becontree",
-    "Becontree Heath",
-    "Beddington",
-    "Bedford Park",
-    "Belgravia",
-    "Bell Green",
-    "Bellingham",
-    "Belmont",
-    "Belmont",
-    "Belsize Park",
-    "Belvedere",
-    "Bermondsey",
-    "Berry's Green",
-    "Berrylands",
-    "Bethnal Green",
-    "Bexley",
-    "Bexleyheath",
-    "Bickley",
-    "Biggin Hill",
-    "Blackfen",
-    "Blackfriars",
-    "Blackheath",
-    "Blackheath Royal Standard",
-    "Blackwall",
-    "Blendon",
-    "Bloomsbury",
-    "Botany Bay",
-    "Bounds Green",
-    "Bow",
-    "Bowes Park",
-    "Brentford",
-    "Brent Cross",
-    "Brent Park",
-    "Brimsdown",
-    "Brixton",
-    "Brockley",
-    "Bromley",
-    "Bromley",
-    "Bromley Common",
-    "Brompton",
-    "Brondesbury",
-    "Brunswick Park",
-    "Bulls Cross",
-    "Burnt Oak",
-    "Burroughs, The",
-    "Camberwell",
-    "Cambridge Heath",
-    "Camden Town",
-    "Canary Wharf",
-    "Cann Hall",
-    "Canning Town",
-    "Canonbury",
-    "Carshalton",
-    "Castelnau",
-    "Castle Green",
-    "Catford",
-    "Chadwell Heath",
-    "Chalk Farm",
-    "Charing Cross",
-    "Charlton",
-    "Chase Cross",
-    "Cheam",
-    "Chelsea",
-    "Chelsfield",
-    "Chessington",
-    "Childs Hill",
-    "Chinatown",
-    "Chinbrook",
-    "Chingford",
-    "Chislehurst",
-    "Chiswick",
-    "Church End",
-    "Church End",
-    "Clapham",
-    "Clapham Junction",
-    "Clerkenwell",
-    "Cockfosters",
-    "Coldblow",
-    "Colindale",
-    "Collier Row",
-    "Colliers Wood",
-    "Colney Hatch",
-    "Coney Hall",
-    "Coombe",
-    "Coombe",
-    "Coulsdon",
-    "Covent Garden",
-    "Cowley",
-    "Cranford",
-    "Cranham",
-    "Crayford",
-    "Creekmouth",
-    "Crews Hill",
-    "Cricklewood",
-    "Crofton Park",
-    "Crook Log",
-    "Crossness",
-    "Crouch End",
-    "Croydon",
-    "Crystal Palace",
-    "Cubitt Town",
-    "Cudham",
-    "Custom House",
-    "Dagenham",
-    "Dalston",
-    "De Beauvoir Town",
-    "Denmark Hill",
-    "Deptford",
-    "Derry Downs",
-    "Dollis Hill",
-    "Downe",
-    "Downham",
-    "Dulwich",
-    "Dulwich Village",
-    "Ealing",
-    "Earls Court",
-    "Earlsfield",
-    "East Barnet",
-    "East Bedfont",
-    "East Dulwich",
-    "East Finchley",
-    "East Ham",
-    "East Sheen",
-    "East Wickham",
-    "Eastcote",
-    "Eden Park",
-    "Edgware",
-    "Edmonton",
-    "Eel Pie Island",
-    "Elephant and Castle",
-    "Elm Park",
-    "Elmers End",
-    "Elmstead",
-    "Eltham",
-    "Emerson Park",
-    "Enfield Highway",
-    "Enfield Lock",
-    "Enfield Town",
-    "Enfield Wash",
-    "Erith",
-    "Falconwood",
-    "Farringdon",
-    "Feltham",
-    "Finchley",
-    "Finsbury",
-    "Finsbury Park",
-    "Fitzrovia",
-    "Foots Cray",
-    "Forest Gate",
-    "Forest Hill",
-    "Forestdale",
-    "Fortis Green",
-    "Freezywater",
-    "Friern Barnet",
-    "Frognal",
-    "Fulham",
-    "Fulwell",
-    "Gallows Corner",
-    "Gants Hill",
-    "Gidea Park",
-    "Gipsy Hill",
-    "Goddington",
-    "Golders Green",
-    "Goodmayes",
-    "Gospel Oak",
-    "Grahame Park",
-    "Grange Park",
-    "Greenford",
-    "Greenwich",
-    "Grove Park",
-    "Grove Park",
-    "Gunnersbury",
-    "Hackney",
-    "Hackney Central",
-    "Hackney Marshes",
-    "Hackney Wick",
-    "Hadley Wood",
-    "Haggerston",
-    "Hainault",
-    "Hale, The",
-    "Ham",
-    "Hammersmith",
-    "Hampstead",
-    "Hampstead Garden Suburb",
-    "Hampton",
-    "Hampton Hill",
-    "Hampton Wick",
-    "Hanwell",
-    "Hanworth",
-    "Harefield",
-    "Harlesden",
-    "Harlington",
-    "Harmondsworth",
-    "Harold Hill",
-    "Harold Park",
-    "Harold Wood",
-    "Harringay",
-    "Harrow",
-    "Harrow on the Hill",
-    "Harrow Weald",
-    "Hatch End",
-    "Hatton",
-    "Havering-atte-Bower",
-    "Hayes",
-    "Hayes",
-    "Hazelwood",
-    "Hendon",
-    "Herne Hill",
-    "Heston",
-    "Highams Park",
-    "Highbury",
-    "Highgate",
-    "Hillingdon",
-    "Hither Green",
-    "Holborn",
-    "Holland Park",
-    "Holloway",
-    "Homerton",
-    "Honor Oak",
-    "Hook",
-    "Hornchurch",
-    "Horn Park",
-    "Horns Green",
-    "Hornsey",
-    "Hounslow",
-    "Hoxton",
-    "Hyde, The",
-    "Ickenham",
-    "Ilford",
-    "Isle of Dogs",
-    "Isleworth",
-    "Islington",
-    "Kenley",
-    "Kennington",
-    "Kensal Green",
-    "Kensington",
-    "Kentish Town",
-    "Kenton",
-    "Keston",
-    "Kew",
-    "Kidbrooke",
-    "Kilburn",
-    "King's Cross",
-    "King's Cross Central",
-    "Kingsbury",
-    "Kingston Vale",
-    "Kingston upon Thames",
-    "Knightsbridge",
-    "Ladywell",
-    "Lambeth",
-    "Lamorbey",
-    "Lampton",
-    "Lea Bridge",
-    "Leamouth",
-    "Leaves Green",
-    "Lee",
-    "Lessness Heath",
-    "Lewisham",
-    "Leyton",
-    "Leytonstone",
-    "Limehouse",
-    "Lisson Grove",
-    "Little Ilford",
-    "Little Venice",
-    "Locksbottom",
-    "Longford",
-    "Longlands",
-    "Lower Clapton",
-    "Lower Morden",
-    "Loxford",
-    "Luxted",
-    "Maida Vale",
-    "Malden Rushett",
-    "Manor House",
-    "Manor Park",
-    "Marks Gate",
-    "Maryland",
-    "Marylebone",
-    "Mayfair",
-    "Maze Hill",
-    "Merton Park",
-    "Middle Park",
-    "Mile End",
-    "Mill Hill",
-    "Millbank",
-    "Millwall",
-    "Mitcham",
-    "Monken Hadley",
-    "Morden",
-    "Morden Park",
-    "Mortlake",
-    "Motspur Park",
-    "Mottingham",
-    "Muswell Hill",
-    "Neasden",
-    "New Addington",
-    "New Barnet",
-    "New Cross",
-    "New Eltham",
-    "New Malden",
-    "New Southgate",
-    "Newbury Park",
-    "Newington",
-    "Nine Elms",
-    "Noak Hill",
-    "Norbiton",
-    "Norbury",
-    "North Cray",
-    "North End",
-    "North End",
-    "North Finchley",
-    "North Harrow",
-    "North Kensington",
-    "North Ockendon",
-    "North Sheen",
-    "North Woolwich",
-    "Northolt",
-    "Northumberland Heath",
-    "Northumberland Park",
-    "Northwood",
-    "Norwood Green",
-    "Notting Hill",
-    "Nunhead",
-    "Oakleigh Park",
-    "Old Chiswick",
-    "Old Coulsdon",
-    "Old Ford",
-    "Old Malden",
-    "Old Oak Common",
-    "Orpington",
-    "Osidge",
-    "Osterley",
-    "Oval",
-    "Paddington",
-    "Palmers Green",
-    "Park Royal",
-    "Parsons Green",
-    "Peckham",
-    "Penge",
-    "Pentonville",
-    "Perivale",
-    "Petersham",
-    "Petts Wood",
-    "Pimlico",
-    "Pinner",
-    "Plaistow",
-    "Plaistow",
-    "Plumstead",
-    "Ponders End",
-    "Poplar",
-    "Pratt's Bottom",
-    "Preston",
-    "Primrose Hill",
-    "Purley",
-    "Putney",
-    "Queen's Park",
-    "Queensbury",
-    "Rainham",
-    "Ratcliff",
-    "Rayners Lane",
-    "Raynes Park",
-    "Redbridge",
-    "Richmond",
-    "Riddlesdown",
-    "Roehampton",
-    "Romford",
-    "Rotherhithe",
-    "Ruislip",
-    "Rush Green",
-    "Ruxley",
-    "Sanderstead",
-    "Sands End",
-    "Selhurst",
-    "Selsdon",
-    "Seven Kings",
-    "Seven Sisters",
-    "Shacklewell",
-    "Shadwell",
-    "Shepherd's Bush",
-    "Shirley",
-    "Shooter's Hill",
-    "Shoreditch",
-    "Sidcup",
-    "Silvertown",
-    "Single Street",
-    "Sipson",
-    "Slade Green",
-    "Snaresbrook",
-    "Soho",
-    "Somerstown",
-    "South Croydon",
-    "South Hackney",
-    "South Harrow",
-    "South Hornchurch",
-    "South Kensington",
-    "South Norwood",
-    "South Ruislip",
-    "South Street",
-    "South Wimbledon",
-    "South Woodford",
-    "South Tottenham",
-    "Southend",
-    "Southall",
-    "Southborough",
-    "Southfields",
-    "Southgate",
-    "Southwark",
-    "Spitalfields",
-    "St Helier",
-    "St James's",
-    "St Margarets",
-    "St Giles",
-    "St Johns",
-    "St John's Wood",
-    "St Luke's",
-    "St Mary Cray",
-    "St Pancras",
-    "St Paul's Cray",
-    "Stamford Hill",
-    "Stanmore",
-    "Stepney",
-    "Stockwell",
-    "Stoke Newington",
-    "Stonebridge",
-    "Stratford",
-    "Stratford City",
-    "Strawberry Hill",
-    "Streatham",
-    "Stroud Green",
-    "Sudbury",
-    "Sundridge",
-    "Surbiton",
-    "Surrey Quays",
-    "Sutton",
-    "Swiss Cottage",
-    "Sydenham",
-    "Sydenham Hill",
-    "Teddington",
-    "Temple",
-    "Temple Fortune",
-    "Thamesmead",
-    "Thames View",
-    "Thornton Heath",
-    "Tokyngton",
-    "Tolworth",
-    "Tooting",
-    "Tooting Bec",
-    "Tottenham",
-    "Tottenham Green",
-    "Tottenham Hale",
-    "Totteridge",
-    "Tower Hill",
-    "Tufnell Park",
-    "Tulse Hill",
-    "Turnpike Lane",
-    "Twickenham",
-    "Upminster",
-    "Upminster Bridge",
-    "Upney",
-    "Upper Clapton",
-    "Upper Holloway",
-    "Upper Norwood",
-    "Upper Ruxley",
-    "Upper Walthamstow",
-    "Upton",
-    "Upton Park",
-    "Uxbridge",
-    "Vauxhall",
-    "Waddon",
-    "Wallington",
-    "Walthamstow",
-    "Walthamstow Village",
-    "Walworth",
-    "Wandsworth",
-    "Wanstead",
-    "Wapping",
-    "Wealdstone",
-    "Well Hall",
-    "Welling",
-    "Wembley",
-    "Wembley Park",
-    "Wennington",
-    "West Brompton",
-    "West Drayton",
-    "West Dulwich",
-    "West Ealing",
-    "West Green",
-    "West Hackney",
-    "West Ham",
-    "West Hampstead",
-    "West Harrow",
-    "West Heath",
-    "West Hendon",
-    "West Kensington",
-    "West Norwood",
-    "West Wickham",
-    "Westcombe Park",
-    "Westminster",
-    "Whetstone",
-    "White City",
-    "Whitechapel",
-    "Widmore",
-    "Whitton",
-    "Willesden",
-    "Wimbledon",
-    "Winchmore Hill",
-    "Wood Green",
-    "Woodford",
-    "Woodford Bridge",
-    "Woodford Wells",
-    "Woodford Green",
-    "Woodlands",
-    "Woodside",
-    "Woodside Park",
-    "Woolwich",
-    "Worcester Park",
-    "Wormwood Scrubs",
-    "Yeading",
-    "Yiewsley"
-]
+# List of UK counties and countries
+uk_counties = {
+    "England": [
+        "Bedfordshire", "Berkshire", "Bristol", "Buckinghamshire", "Cambridgeshire",
+        "Cheshire", "City of London", "Cornwall", "Cumbria", "Derbyshire",
+        "Devon", "Dorset", "Durham", "East Riding of Yorkshire", "East Sussex",
+        "Essex", "Gloucestershire", "Greater London", "Greater Manchester", "Hampshire",
+        "Herefordshire", "Hertfordshire", "Isle of Wight", "Kent", "Lancashire",
+        "Leicestershire", "Lincolnshire", "Merseyside", "Norfolk", "North Yorkshire",
+        "Northamptonshire", "Northumberland", "Nottinghamshire", "Oxfordshire", "Rutland",
+        "Shropshire", "Somerset", "South Yorkshire", "Staffordshire", "Suffolk",
+        "Surrey", "Tyne and Wear", "Warwickshire", "West Midlands", "West Sussex",
+        "West Yorkshire", "Wiltshire", "Worcestershire"
+    ],
+    "Scotland": [
+        "Aberdeen City", "Aberdeenshire", "Angus", "Argyll and Bute", "Clackmannanshire",
+        "Dumfries and Galloway", "Dundee City", "East Ayrshire", "East Dunbartonshire", "East Lothian",
+        "East Renfrewshire", "Edinburgh", "Falkirk", "Fife", "Glasgow",
+        "Highland", "Inverclyde", "Midlothian", "Moray", "North Ayrshire",
+        "North Lanarkshire", "Orkney Islands", "Perth and Kinross", "Renfrewshire", "Scottish Borders",
+        "Shetland Islands", "South Ayrshire", "South Lanarkshire", "Stirling", "West Dunbartonshire",
+        "West Lothian", "Western Isles"
+    ],
+    "Wales": [
+        "Anglesey", "Blaenau Gwent", "Bridgend", "Caerphilly", "Cardiff",
+        "Carmarthenshire", "Ceredigion", "Conwy", "Denbighshire", "Flintshire",
+        "Gwynedd", "Merthyr Tydfil", "Monmouthshire", "Neath Port Talbot", "Newport",
+        "Pembrokeshire", "Powys", "Rhondda Cynon Taf", "Swansea", "Torfaen",
+        "Vale of Glamorgan", "Wrexham"
+    ],
+    "Northern Ireland": [
+        "Antrim", "Armagh", "Down", "Fermanagh", "Londonderry",
+        "Tyrone"
+    ]
+}
+
+# CSV filename
+csv_filename = "UK_Elevator_Services.csv"
+progress_filename = "progress.txt"
+
+# Function to load existing phone numbers from the CSV
+def load_existing_phones():
+    existing_phones = set()
+    if os.path.exists(csv_filename):
+        with open(csv_filename, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row["Phone"]:
+                    existing_phones.add(row["Phone"])
+    return existing_phones
+
+# Function to load progress
+def load_progress():
+    if os.path.exists(progress_filename):
+        with open(progress_filename, 'r') as f:
+            last_country, last_county = f.read().strip().split(',')
+            return last_country, last_county
+    return None, None
+
+# Function to save progress
+def save_progress(country, county):
+    with open(progress_filename, 'w') as f:
+        f.write(f"{country},{county}")
 
 # Function to scrape data for a single location
-def scrape_location(page: Page, location):
-    query = f"Elevator Service in {location}, London"
+def scrape_location(page: Page, county, country, existing_phones):
+    query = f"Elevator in {county}, {country}"
     search_url = f"https://www.google.com/maps/search/{'+'.join(query.split())}/"
 
-    print(f"Scraping location: {location}")
+    print(f"Scraping: {county}, {country}")
 
     page.goto(search_url)
 
@@ -607,10 +114,9 @@ def scrape_location(page: Page, location):
 
     new_results = page.query_selector_all('a.hfpxzc')
     all_results_links = [result.get_attribute('href') for result in new_results]
-    print(f"Found {len(all_results_links)} results for {location}")
+    print(f"Found {len(all_results_links)} results for {county}, {country}")
 
     # Parse the data
-    existing_phones = set()
     parsed_data = []
     for index, result_link in enumerate(all_results_links):
         page.goto(result_link)
@@ -619,14 +125,14 @@ def scrape_location(page: Page, location):
         try:
             name = page.query_selector(".tAiQdd h1.DUwDvf").inner_text() if page.query_selector(".tAiQdd h1.DUwDvf") else ""
             phone = page.query_selector("[data-tooltip='Copy phone number'] div.rogA2c").inner_text() if page.query_selector("[data-tooltip='Copy phone number'] div.rogA2c") else ""
-            # Skip if phone already exists
+            # Skip if phone already exists in the set
             if phone and phone in existing_phones:
                 continue
 
             address = page.query_selector("[data-tooltip='Copy address'] div.rogA2c").inner_text() if page.query_selector("[data-tooltip='Copy address'] div.rogA2c") else ""
             website_url = page.query_selector("[data-tooltip='Open website']").get_attribute("href") if page.query_selector("[data-tooltip='Open website']") else ""
             rating = page.query_selector("span.ceNzKf").get_attribute("aria-label") if page.query_selector("span.ceNzKf") else ""
-            total_reviews = page.query_selector("div.F7nice span").inner_text() if page.query_selector("div.F7nice span") else ""
+            total_reviews = page.query_selector("div.F7nice span span[aria-label*='reviews']").get_attribute("aria-label") if page.query_selector("div.F7nice span span[aria-label*='reviews']") else ""
 
             call_hyperlink = f'=HYPERLINK("https://call.ctrlq.org/{phone}", B{index + 2})' if phone else ""
 
@@ -638,9 +144,11 @@ def scrape_location(page: Page, location):
                 "Address": address,
                 "Website": website_url,
                 "Rating": rating,
-                "Total Reviews": total_reviews
+                "Total Reviews": total_reviews,
+                "County": county,
+                "Country": country
             })
-            # Add phone to set of existing phones
+            # Add phone to the existing phones set to prevent duplicates
             existing_phones.add(phone)
 
         except Exception as e:
@@ -649,26 +157,38 @@ def scrape_location(page: Page, location):
 
     return parsed_data
 
+
 # Function to save data to a CSV file
-def save_to_csv(data, location):
-    filename = f"Elevator_Service_in_{location.replace(' ', '_')}_London.csv"
+def save_to_csv(data):
+    file_exists = os.path.isfile(csv_filename)
     keys = data[0].keys()
-    with open(filename, 'w', newline='', encoding='utf-8') as output_file:
+
+    with open(csv_filename, 'a', newline='', encoding='utf-8') as output_file:
         dict_writer = csv.DictWriter(output_file, fieldnames=keys)
-        dict_writer.writeheader()
+        if not file_exists:
+            dict_writer.writeheader()  # Write header only if the file does not already exist
         dict_writer.writerows(data)
-    print(f"Data saved to {filename}")
+    print(f"Data appended to {csv_filename}")
 
 # Main function
 def main():
+    existing_phones = load_existing_phones()
+    last_country, last_county = load_progress()
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        for location in locations:
-            data = scrape_location(page, location)
-            if data:
-                save_to_csv(data, location)
+        resume = False
+        for country, counties in uk_counties.items():
+            for county in counties:
+                if last_country == country and last_county == county:
+                    resume = True
+                if resume or (last_country is None and last_county is None):
+                    data = scrape_location(page, county, country, existing_phones)
+                    if data:
+                        save_to_csv(data)
+                    save_progress(country, county)
 
         browser.close()
 
