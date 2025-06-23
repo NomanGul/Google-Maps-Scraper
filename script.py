@@ -1,6 +1,7 @@
 import csv
 import time
 import os
+import random
 from playwright.sync_api import sync_playwright, Page
 
 # List of UK counties and countries
@@ -40,7 +41,7 @@ uk_counties = {
 }
 
 # CSV filename
-csv_filename = "UK_Elevator_Services.csv"
+csv_filename = "Taxi_Companies.csv"
 progress_filename = "progress.txt"
 
 # Function to load existing phone numbers from the CSV
@@ -58,8 +59,11 @@ def load_existing_phones():
 def load_progress():
     if os.path.exists(progress_filename):
         with open(progress_filename, 'r') as f:
-            last_country, last_county = f.read().strip().split(',')
-            return last_country, last_county
+            content = f.read().strip()
+            if content:
+                parts = content.split(',')
+                if len(parts) == 2:
+                    return parts[0], parts[1]
     return None, None
 
 # Function to save progress
@@ -69,12 +73,22 @@ def save_progress(country, county):
 
 # Function to scrape data for a single location
 def scrape_location(page: Page, county, country, existing_phones):
-    query = f"Elevator in {county}, {country}"
+    query = f"Taxi companies in {county}, {country}"
     search_url = f"https://www.google.com/maps/search/{'+'.join(query.split())}/"
-
     print(f"Scraping: {county}, {country}")
+    
+    page.goto(search_url, wait_until="domcontentloaded")
+    
+    # Add random delay after navigation
+    # time.sleep(random.uniform(8, 12))
+    
+    # Check if we got redirected to a CAPTCHA/sorry page
+    if "sorry" in page.url or "captcha" in page.url.lower():
+        print(f"WARNING: Got redirected to CAPTCHA page: {page.url}")
+        print("Waiting longer before retrying...")
+        time.sleep(random.uniform(30, 60))
+        return []
 
-    page.goto(search_url)
 
     # Scroll and collect all result links
     all_results_links = []
@@ -119,8 +133,27 @@ def scrape_location(page: Page, county, country, existing_phones):
     # Parse the data
     parsed_data = []
     for index, result_link in enumerate(all_results_links):
-        page.goto(result_link)
-        page.wait_for_selector(".tAiQdd h1.DUwDvf")
+        # # Add delay between processing results
+        # if index > 0:
+        #     time.sleep(random.uniform(1, 3))
+        
+        # Try to navigate to the page with retries
+        success = False
+        for attempt in range(3):
+            try:
+                page.goto(result_link, wait_until="domcontentloaded", timeout=60000)
+                # page.wait_for_selector(".tAiQdd h1.DUwDvf", timeout=10000)
+                success = True
+                break
+            except Exception as e:
+                print(f"Attempt {attempt + 1} failed for result {index + 1}: {e}")
+                if attempt < 2:
+                    time.sleep(random.uniform(2, 5))
+                continue
+        
+        if not success:
+            print(f"Skipping result {index + 1} after 3 failed attempts")
+            continue
 
         try:
             name = page.query_selector(".tAiQdd h1.DUwDvf").inner_text() if page.query_selector(".tAiQdd h1.DUwDvf") else ""
@@ -174,12 +207,137 @@ def save_to_csv(data):
 def main():
     existing_phones = load_existing_phones()
     last_country, last_county = load_progress()
-
+    print(f"Last country: {last_country}, Last county: {last_county}")
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        browser = p.chromium.launch(
+            headless=True,  # Try non-headless first
+            args=[
+                '--no-sandbox',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-dev-shm-usage',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-field-trial-config',
+                '--disable-back-forward-cache',
+                '--disable-default-apps',
+                '--disable-hang-monitor',
+                '--disable-prompt-on-repost',
+                '--disable-sync',
+                '--disable-translate',
+                '--metrics-recording-only',
+                '--no-first-run',
+                '--mute-audio',
+                '--hide-scrollbars',
+                '--disable-client-side-phishing-detection',
+                '--disable-component-update',
+                '--disable-default-apps',
+                '--disable-domain-reliability',
+                '--disable-extensions',
+                '--disable-features=TranslateUI',
+                '--disable-ipc-flooding-protection',
+                '--disable-plugins',
+                '--disable-popup-blocking',
+                '--disable-print-preview',
+                '--disable-setuid-sandbox',
+                '--disable-speech-api',
+                '--disable-toolkit-message-center',
+                '--disable-wake-on-wifi',
+                '--enable-automation',
+                '--password-store=basic',
+                '--use-mock-keychain',
+            ]
+        )
+        context = browser.new_context(
+            user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            viewport={'width': 1920, 'height': 1080},
+            extra_http_headers={
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+            }
+        )
+        page = context.new_page()
+        
+        # Add comprehensive stealth script to avoid detection
+        page.add_init_script("""
+            // Remove webdriver property
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined,
+            });
+            
+            // Mock chrome object
+            window.chrome = {
+                runtime: {},
+                loadTimes: function() {},
+                csi: function() {},
+                app: {}
+            };
+            
+            // Mock plugins
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [
+                    {
+                        0: {type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format", enabledPlugin: Plugin},
+                        description: "Portable Document Format",
+                        filename: "internal-pdf-viewer",
+                        length: 1,
+                        name: "Chrome PDF Plugin"
+                    },
+                    {
+                        0: {type: "application/pdf", suffixes: "pdf", description: "", enabledPlugin: Plugin},
+                        description: "",
+                        filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
+                        length: 1,
+                        name: "Chrome PDF Viewer"
+                    }
+                ],
+            });
+            
+            // Mock languages
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-US', 'en'],
+            });
+            
+            // Mock permissions
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                    Promise.resolve({ state: Notification.permission }) :
+                    originalQuery(parameters)
+            );
+            
+            // Remove automation indicators
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+            
+            // Mock screen properties
+            Object.defineProperty(screen, 'availTop', {get: () => 0});
+            Object.defineProperty(screen, 'availLeft', {get: () => 0});
+            Object.defineProperty(screen, 'availWidth', {get: () => 1920});
+            Object.defineProperty(screen, 'availHeight', {get: () => 1080});
+            
+            // Mock connection
+            Object.defineProperty(navigator, 'connection', {
+                get: () => ({
+                    downlink: 10,
+                    effectiveType: '4g',
+                    rtt: 150,
+                    saveData: false
+                }),
+            });
+        """)
 
         resume = False
+
+        # First visit Google homepage to establish natural browsing pattern
+        print("Visiting Google homepage first...")
+        page.goto("https://www.google.com", wait_until="domcontentloaded")
         for country, counties in uk_counties.items():
             for county in counties:
                 if last_country == country and last_county == county:
